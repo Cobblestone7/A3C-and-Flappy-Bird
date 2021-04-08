@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -6,9 +5,9 @@ import flappy_bird_gym
 #from flappy_bird_env_simple import FlappyBirdEnvSimple
 import gym
 import torch.multiprocessing as mp
-import load
+import os
 import pickle
-#import random
+
 
 def t(m_array):
     """Helper function. Returns a multidimensional array to a torch tensor."""
@@ -37,90 +36,32 @@ class SharedAdam(torch.optim.Adam):
 class Worker(mp.Process):
     """A single reinforcement agent worker."""
 
-    def __init__(self, global_actor_critic, optimizer, env_name, gamma, name, global_ep_idx, max_episodes, t_max, plot_fold, conv_plot_fold, store_session, path, prob_plot_fold, entropy_reg_factor):
+    def __init__(self, parameters, i):
         super(Worker, self).__init__()
-        self.env_name = env_name
-        self.env = gym.make(self.env_name)
-        #self.env = FlappyBirdEnvSimple()
-        self.state_dim = [self.env.observation_space.shape[0]]
-        self.n_actions = self.env.action_space.n
-        self.max_episodes = max_episodes
-        self.t_max = t_max
-        self.local_actor_critic = ActorCritic(self.state_dim, self.n_actions)
-        self.global_actor_critic = global_actor_critic
-        self.optimizer = optimizer
-        self.gamma = gamma
+
+        # Environment, network, optimizer
+        self.env = gym.make(parameters['environment name'])
+        self.local_actor_critic = ActorCritic([self.env.observation_space.shape[0]], self.env.action_space.n)
+        self.global_actor_critic = parameters['global actor critic']
+        self.optimizer = parameters['optimizer']
+
+        # Constants
+        self.max_episodes = parameters['max episodes']
+        self.t_max = parameters['t_max']
+        self.entropy_reg_factor = parameters['entropy regularization factor']
+        self.gamma = parameters['gamma']
+
+        # Miscellaneous
         self.memory = Memory()
-        self.name = 'w%02i' % name
-        self.episode_idx = global_ep_idx
-        self.plot = []
-        self.conv_plot = []
-        self.prob_plot = []
-        self.states = []
-        self.plot_fold = plot_fold
-        self.conv_plot_fold = conv_plot_fold
-        self.prob_plot_fold = prob_plot_fold
-        self.store_session = store_session
-        self.path = path
-        self.entropy_reg_factor = entropy_reg_factor
-        self.teststates()
+        self.episode_idx = parameters['global episode index']
+        self.name = 'w%02i' % i
+
+        # Initialize the local network
         self.local_actor_critic.load_state_dict(
             self.global_actor_critic.state_dict())
 
-    def teststates(self):
-        if self.env_name == 'FlappyBird-v0':
-            for i in range(0, 280, 28):
-                for j in range(0, 510, 51):
-                    self.states.append(t([i, j]))
-        else:
-            for i in range(-4, 4, 1):
-              for j in range(-10, 10, 5):
-                  for k in range(-418, 418, 200):
-                      for l in range(-10, 10, 5):
-                        self.states.append(t([i, j, k / float(1000), l]))
-
-    def add_plot(self, total_reward):
-        self.plot.append(total_reward)
-        temp_list = []
-        for state in self.states:
-            _, value = self.local_actor_critic(t(state))
-            temp_list.append(value)
-        self.conv_plot.append(torch.mean(t(temp_list)))
-
-    def add_prob_plot(self, probs):
-        self.prob_plot.append(probs.squeeze()[0])
-
-    def clear_plot(self):
-        self.plot = []
-        self.conv_plot = []
-        self.prob_plot = []
-
-    def save_plot(self):
-        filepath = self.path + '/' + self.plot_fold + '/' + self.name + '.txt'
-        f = open(filepath, 'a+')
-        for element in self.plot:
-            f.write(str(element) + '\n')
-        f.close()
-
-    def save_conv(self):
-        filepath = self.path + '/' + self.conv_plot_fold + '/' + self.name + '.txt'
-        f = open(filepath, 'a+')
-        for element in self.conv_plot:
-            f.write(str(element.item()) + '\n')
-        f.close()
-
-    def save_prob(self):
-        filepath = self.path + '/' + self.prob_plot_fold + '/' + self.name + '.txt'
-        f = open(filepath, 'a+')
-        for element in self.prob_plot:
-            f.write(str(element.item()) + '\n')
-        f.close()
-
-    def save_net(self):
-        f = open(self.path + '/' + self.store_session, 'w+b')
-        pickle.dump(self.global_actor_critic, f)
-        f.close()
-
+        # Initialize Data Storage
+        self.data = Data_storage(parameters['rel_path'], parameters['environment name'])
 
     def run(self):
         for i in range(self.max_episodes):
@@ -152,7 +93,7 @@ class Worker(mp.Process):
                 total_reward += accumulated_reward
                 # Add data to memory
                 self.memory.add(observation, action, accumulated_reward, value)
-                self.add_prob_plot(probs)
+                self.data.add_prob(probs)
                 # Call training
                 if steps % self.t_max == 0 or done:
                     # Train locally
@@ -173,18 +114,20 @@ class Worker(mp.Process):
             with self.episode_idx.get_lock():
                 self.episode_idx.value += 1
             print(self.name, 'episode', self.episode_idx.value, total_reward)
-            self.add_plot(total_reward)
+            self.data.add_score(total_reward)
+            self.data.add_conv(self.local_actor_critic)
 
-            if len(self.plot) > 100000:
-                self.save_plot()
-                self.save_conv()
-                self.save_prob()
-                self.clear_plot()
-        self.save_plot()
-        self.save_conv()
-        self.save_prob()
-        self.save_net()
-        self.clear_plot()
+            if len(self.data.score_plot) > 100000:
+                self.data.save_score(self.name)
+                self.data.save_conv(self.name)
+                self.data.save_prob(self.name)
+                self.data.clear_plot()
+        self.data.save_score(self.name)
+        self.data.save_conv(self.name)
+        self.data.save_prob(self.name)
+        self.data.clear_plot()
+        if self.name == 'w00':
+            self.data.save_net(self.global_actor_critic)
 
     def train(self, done):
         """Trains the neural networks (actor and critic) based on the
@@ -258,7 +201,85 @@ class Memory():
         self.values = []
 
 
+class Data_storage():
+    """Stores and loads data not directly required for the algorithm to run."""
 
+    def __init__(self, path, env_name):
+
+        # path for data storage
+        self.path = path
+
+        # Generates test states for the convergence plot dependent on the environment
+        self.test_states = self._teststates(env_name)
+
+        # Initialize lists for plot data
+        self.score_plot = []
+        self.conv_plot = []
+        self.prob_plot = []
+
+    def clear_plot(self):
+        self.score_plot = []
+        self.conv_plot = []
+        self.prob_plot = []
+
+    def add_score(self, total_reward):
+        self.score_plot.append(total_reward)
+
+    def add_conv(self, local_actor_critic):
+        temp_list = []
+        for state in self.test_states:
+            _, value = local_actor_critic(t(state))
+            temp_list.append(value)
+        self.conv_plot.append(torch.mean(t(temp_list)))
+
+    def add_prob(self, probs):
+        self.prob_plot.append(probs.squeeze()[0])
+
+    def save_score(self, name):
+        folderpath = os.path.join(self.path, 'score_plot')
+        filepath = os.path.join(folderpath, name + '.txt')
+        f = open(filepath, 'a+')
+        for element in self.score_plot:
+            f.write(str(element) + '\n')
+        f.close()
+
+    def save_conv(self, name):
+        folderpath = os.path.join(self.path, 'conv_plot')
+        filepath = os.path.join(folderpath, name + '.txt')
+        f = open(filepath, 'a+')
+        for element in self.conv_plot:
+            f.write(str(element.item()) + '\n')
+        f.close()
+
+    def save_prob(self, name):
+        folderpath = os.path.join(self.path, 'prob_plot')
+        filepath = os.path.join(folderpath, name + '.txt')
+        f = open(filepath, 'a+')
+        for element in self.prob_plot:
+            f.write(str(element.item()) + '\n')
+        f.close()
+
+    def save_net(self, network):
+        filepath = os.path.join(self.path, 'network.txt')
+        f = open(fiepath, 'w+b')
+        pickle.dump(network, f)
+        f.close()
+
+    def _teststates(self, env_name):
+        """Generates test states for the convergence plot dependent on the environment."""
+
+        teststates = []
+        if env_name == 'FlappyBird-v0':
+            for i in range(0, 280, 28):
+                for j in range(0, 510, 51):
+                    teststates.append(t([i, j]))
+        else:
+            for i in range(-4, 4, 1):
+                for j in range(-10, 10, 5):
+                    for k in range(-418, 418, 200):
+                        for l in range(-10, 10, 5):
+                            teststates.append(t([i, j, k / float(1000), l]))
+        return teststates
 
 
 class ActorCritic(nn.Module):
@@ -293,35 +314,29 @@ class ActorCritic(nn.Module):
         #return pi, v
         return actor, critic
 
-def main():
-    learning_rate, gamma, t_max, max_episodes, load_session, state_dim, n_actions, environment_name, plot_fold, conv_plot_fold, store_session, path, prob_plot_fold, entropy_reg_factor, n_workers = load.read_config('config.txt')
-    state_dim = [state_dim]
-    global_actor_critic = load.load_session(load_session)
-    if global_actor_critic is False:
-        global_actor_critic = ActorCritic(state_dim, n_actions)
-    global_actor_critic.share_memory()
-    lr = learning_rate
-    optim = SharedAdam(global_actor_critic.parameters(), lr=lr)
-    global_ep = mp.Value('i', 0)
 
-    workers = [Worker(global_actor_critic,
-                     optim,
-                     environment_name,
-                     gamma,
-                     i,
-                     global_ep,
-                     max_episodes,
-                     t_max,
-                     plot_fold,
-                     conv_plot_fold,
-                     store_session,
-                     path,
-                     prob_plot_fold,
-                     entropy_reg_factor)
-               for i in range(n_workers)]
+def main(parameters, network=None):
+    """Initializes relevant parameters and starts the workers."""
+
+    # Calculates state- and action space dimensions
+    temp_env = gym.make(parameters['environment name'])
+
+    # Creates a global network or loads a new one
+    if network:
+        parameters['global actor critic'] = network
+    else:
+        parameters['global actor critic'] = ActorCritic(temp_env.observation_space.shape[0], temp_env.action_space.n)
+
+    # Shares the memory of the global network
+    parameters['global actor critic'].share_memory()
+
+    # Creates a shared Adam
+    parameters['optimizer'] = SharedAdam(parameters['global actor critic'].parameters(), lr=parameters['learning rate'])
+
+    # Global episode count
+    parameters['global episode'] = global_ep = mp.Value('i', 0)
+
+    workers = [Worker(parameters, i)
+               for i in range(parameters['number of threads'])]
     [w.start() for w in workers]
     [w.join() for w in workers]
-
-
-if __name__ == '__main__':
-    main()
