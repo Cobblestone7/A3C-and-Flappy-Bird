@@ -1,0 +1,12 @@
+learning rate: 1e-4
+gamma: 0.99
+t_max: 10
+max episodes: 1000
+load session: storage.txt
+store session: storage.txt
+environment name: FlappyBird-v0
+directory for plots: plot_fold
+directory for conv_plots: conv_plot_fold
+directory for prob_plots: prob_plot_fold
+number of threads: 8
+entropy regularization factor: 0
