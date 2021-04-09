@@ -95,7 +95,7 @@ class Worker(mp.Process):
                 total_reward += reward
 
                 # Add data to memory
-                self.memory.add(observation, action, accumulated_reward, value)
+                self.memory.add(observation, action, reward, value)
 
                 # Add probability data to the data storage object
                 self.data.add_prob(probs)
