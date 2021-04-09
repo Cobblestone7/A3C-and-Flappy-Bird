@@ -1,15 +1,23 @@
+#### Config for a new session ####
+
 environment name: FlappyBird-v0
 learning rate: 1e-4
 gamma: 0.99
-t_max: 10
-max episodes: 1000
+t_max: 5
+max episodes: 10
 entropy regularization factor: 0
 number of threads: 8
 
 session name: Session 1
-number of realizations: 10
+number of realizations: 5
 
-# If a session is entered here, that session is loaded and the config of that session is used.
-load session:
+
+
+#### Config for loading an old session ####
+# If a session is entered here, that session is loaded and the config of that session is used,
+# along with the specified amount of max episodes.
+
+load session: Session 1
+max load episodes: 5
 
 

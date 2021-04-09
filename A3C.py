@@ -261,7 +261,7 @@ class Data_storage():
 
     def save_net(self, network):
         filepath = os.path.join(self.path, 'network.txt')
-        f = open(fiepath, 'w+b')
+        f = open(filepath, 'wb')
         pickle.dump(network, f)
         f.close()
 
@@ -325,7 +325,7 @@ def main(parameters, network=None):
     if network:
         parameters['global actor critic'] = network
     else:
-        parameters['global actor critic'] = ActorCritic(temp_env.observation_space.shape[0], temp_env.action_space.n)
+        parameters['global actor critic'] = ActorCritic([temp_env.observation_space.shape[0]], temp_env.action_space.n)
 
     # Shares the memory of the global network
     parameters['global actor critic'].share_memory()
@@ -334,7 +334,7 @@ def main(parameters, network=None):
     parameters['optimizer'] = SharedAdam(parameters['global actor critic'].parameters(), lr=parameters['learning rate'])
 
     # Global episode count
-    parameters['global episode'] = global_ep = mp.Value('i', 0)
+    parameters['global episode index'] = global_ep = mp.Value('i', 0)
 
     workers = [Worker(parameters, i)
                for i in range(parameters['number of threads'])]
