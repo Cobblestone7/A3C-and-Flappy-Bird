@@ -10,13 +10,12 @@ import pickle
 
 
 def t(m_array):
-    """Helper function. Returns a multidimensional array to a torch tensor."""
-    #return torch.from_numpy(m_array).float()
+    """Converts a multidimensional array to a torch tensor and returns it."""
     return torch.Tensor(m_array)
 
 
 class SharedAdam(torch.optim.Adam):
-    """Adam optimizer shared by all workers."""
+    """An Adam optimizer shared by all workers."""
     def __init__(self, params, lr=1e-4, betas=(0.9, 0.999), eps=1e-8,
             weight_decay=0):
         super(SharedAdam, self).__init__(params, lr=lr, betas=betas, eps=eps,

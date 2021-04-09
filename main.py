@@ -4,9 +4,9 @@ import pickle
 
 
 def read_config(filename):
-    """Reads parameters from the config file."""
+    """Reads parameters from the config file and converts them to the proper data type.
+     Returns the parameters in a dictionary."""
 
-    # Read the parameters
     f = open(filename, 'r')
     parameters = {}
     while True:
@@ -29,9 +29,14 @@ def read_config(filename):
 
 
 def load_session(path, max_episodes):
+    """Imports parameters and networks from an old session and continues where it ended. It trains every realization an
+    additional max_episodes times."""
+
+    # Imports parameters and set max episodes
     parameters = read_config(os.path.join(path, 'config.txt'))
     parameters['max episodes'] = max_episodes
 
+    # Continues the algorithm for every realization in the loaded session
     for realization in os.listdir(path):
         if os.path.isfile(realization):
             continue
@@ -44,6 +49,8 @@ def load_session(path, max_episodes):
 
 
 def new_session(parameters, path):
+    """Creates a new session and runs the algorithm once per realization."""
+
     # Create root folder
     os.mkdir(path)
 
@@ -56,7 +63,7 @@ def new_session(parameters, path):
         f.write(line)
     f.close()
 
-    # Create realization folder and run A3C for every realization
+    # Create realization folders and run A3C for every realization
     for nr in range(1, parameters['number of realizations'] + 1):
         rel_path = os.path.join(path, 'realization_' + str(nr))
         # Create folders
@@ -69,6 +76,9 @@ def new_session(parameters, path):
 
 
 def main():
+    """Runs a new session or continues an old one depending on the
+    specifications in the config."""
+
     # Read parameters from config file
     parameters = read_config('config.txt')
     main_path = parameters['session name']
