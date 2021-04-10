@@ -79,5 +79,11 @@ def plot(mean, std, type, show=True, filename=False):
     if show:
         plt.show()
 
+mean, std = average('Session 1', 'score_plot')
+plot(mean, std, 'score', show=False)
+
+mean, std = average('Session 1', 'prob_plot')
+plot(mean, std, 'probability', show=False)
+
 mean, std = average('Session 1', 'conv_plot')
-plot(mean, std, 'convergence')
+plot(mean, std, 'convergence', show=True)
