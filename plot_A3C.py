@@ -28,13 +28,28 @@ def average(session, plot_type):
         line = f.readline().split(':')
         if line[0].strip() == 'number of threads':
             n = int(float(line[1].strip()))
+        if line[0].strip() == 'number of realizations':
+            m = int(float(line[1].strip()))
+        if line[0].strip() == '':
             break
     f.close()
     average = []
     for i in range(n):
-        worker = np.array(_import(session, i, plot_type))
+        worker = _import(session, i, plot_type)
+        min = len(worker[0])
+        for j in range(m):
+            if len(worker[j]) < min:
+                min = len(worker[j])
+        for k in range(m):
+            worker[k] = worker[k][0:min - 1]
         mean = np.mean(worker, axis=0)
         average.append(mean)
+    min = len(average[0])
+    for i in range(n):
+        if len(average[i]) < min:
+            min = len(average[i])
+    for j in range(n):
+        average[j] = average[j][0:min - 1]
     mean = np.mean(average, axis=0)
     std = np.std(average, axis=0)
     return mean, std
@@ -64,5 +79,5 @@ def plot(mean, std, type, show=True, filename=False):
     if show:
         plt.show()
 
-mean, std = average('Session 1', 'score_plot')
-plot(mean, std, 'score')
+mean, std = average('Session 1', 'conv_plot')
+plot(mean, std, 'convergence')
