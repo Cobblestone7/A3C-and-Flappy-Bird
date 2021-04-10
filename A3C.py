@@ -324,10 +324,10 @@ class Data_storage():
                 for j in range(0, 510, 51):
                     teststates.append(t([i, j]))
         else:
-            for i in range(-4, 4, 1):
-                for j in range(-10, 10, 5):
-                    for k in range(-418, 418, 200):
-                        for l in range(-10, 10, 5):
+            for i in range(-4, 5, 10):
+                for j in range(-10, 11, 20):
+                    for k in range(-418, 419, 836):
+                        for l in range(-10, 11, 20):
                             teststates.append(t([i, j, k / float(1000), l]))
         return teststates
 
