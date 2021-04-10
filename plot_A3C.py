@@ -69,21 +69,20 @@ def plot(mean, std, type, show=True, filename=False):
         plt.title('mean ' + type + ' vs ' + 'episodes', **title_font)
         plt.xlabel('episodes', **axis_font)
     plt.ylabel('mean' + type, **axis_font)
-    labels = ['plus sigma', 'minus sigma', 'mean ' + type]
-    y_data = [sigma_upper, sigma_lower, mean]
-    for i in range(3):
-        plt.plot([j for j in range(1, len(y_data[i]) + 1)], y_data[i], label=labels[i])
+    x_data = [j for j in range(1, len(mean) + 1)]
+    plt.plot(x_data, mean, label='mean', zorder=5, color='#242424')
+    plt.fill_between(x_data, sigma_lower, sigma_upper, label='plus-minus sigma', color='#c4c7cc')
     plt.legend()
     if filename:
         plt.savefig(filename)
     if show:
         plt.show()
 
-mean, std = average('CartPole lr=1e-5', 'score_plot')
+mean, std = average('Session 1', 'score_plot')
 plot(mean, std, 'score', show=False)
 
-mean, std = average('CartPole lr=1e-5', 'prob_plot')
+mean, std = average('Session 1', 'prob_plot')
 plot(mean, std, 'probability', show=False)
 
-mean, std = average('CartPole lr=1e-5', 'conv_plot')
+mean, std = average('Session 1', 'conv_plot')
 plot(mean, std, 'convergence', show=True)
