@@ -37,6 +37,7 @@ def import_prob(session, realization_nr, worker_nr, episode_nr):
     f.close()
     return prob_data
 
+
 def average(session, plot_type):
     f = open(os.path.join(session, 'config.txt'), 'r')
     while True:
@@ -70,37 +71,33 @@ def average(session, plot_type):
     return mean, std
 
 
-def plot_mean(mean, std, type, show=True, filename=False):
+def plot_mean(mean, std, ylabel='', title='', show=True, filename=False):
     title_font = {'fontname': 'Arial', 'size': '20',
                       'color': 'black', 'weight': 'normal'}
     axis_font = {'fontname': 'Arial', 'size': '18'}
     sigma_upper = mean + std
     sigma_lower = mean - std
     plt.figure()
-    if type == 'probability':
-        plt.title('mean ' + 'probability' + ' vs ' + 'steps', **title_font)
-        plt.xlabel('step', **axis_font)
-    else:
-        plt.title('mean ' + type + ' vs ' + 'episodes', **title_font)
-        plt.xlabel('episodes', **axis_font)
-    plt.ylabel('mean' + type, **axis_font)
+    plt.title(title, **title_font)
+    plt.xlabel('episodes', **axis_font)
+    plt.ylabel(ylabel, **axis_font)
     x_data = [j for j in range(1, len(mean) + 1)]
-    plt.plot(x_data, mean, label='mean', zorder=5, color='#242424')
-    plt.fill_between(x_data, sigma_lower, sigma_upper, label='plus-minus sigma', color='#c4c7cc')
-    plt.legend()
+    plt.plot(x_data, mean, zorder=5)
+    plt.fill_between(x_data, sigma_lower, sigma_upper, color='#c4c7cc')
     if filename:
         plt.savefig(filename)
     if show:
         plt.show()
 
 
-def plot_prob(data, labels=False, ylabel='probability to jump', show=True, filename=False):
+def plot_prob(data, labels=False, ylabel='probability to jump', title='', show=True, filename=False):
     title_font = {'fontname': 'Arial', 'size': '20',
                   'color': 'black', 'weight': 'normal'}
     axis_font = {'fontname': 'Arial', 'size': '18'}
     plt.figure()
     plt.xlabel('steps', **axis_font)
     plt.ylabel(ylabel, **axis_font)
+    plt.title(title, **title_font)
 
     for i in range(len(data)):
         y_data = data[i]
@@ -118,14 +115,14 @@ def plot_prob(data, labels=False, ylabel='probability to jump', show=True, filen
 
 
 mean, std = average('test', 'score_plot')
-plot_mean(mean, std, 'score', show=False)
+plot_mean(mean, std, ylabel='total reward', title='Mean total reward', show=False)
 
 mean, std = average('test', 'conv_plot')
-plot_mean(mean, std, 'convergence', show=False)
+plot_mean(mean, std, ylabel='value', title='Mean value function', show=False)
 
 data = []
 labels = []
 for i in range(0, 100, 10):
     data.append(import_prob('test', 1, 0, i))
     labels.append('episode ' + str(i))
-plot_prob(data, labels=labels, ylabel='probability to go right', show=True, filename=False)
+plot_prob(data, labels=labels, ylabel='probability to go right', title='Policy distribution', show=True, filename=False)
