@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+
 def _import(session, i, plot_type):
     worker_name = ('w%02i' % i) + '.txt'
     data = []
@@ -21,6 +22,20 @@ def _import(session, i, plot_type):
         data.append(data_list)
     return data
 
+
+def import_prob(session, realization_nr, worker_nr, episode_nr):
+    i = worker_nr
+    path = os.path.join(session, 'realization_' + str(realization_nr), 'prob_plot', 'w%02i' % i)
+    filename = os.path.join(path, 'episode ' + str(episode_nr) + '.txt')
+    f = open(filename, 'r')
+    prob_data = []
+    while True:
+        entry = f.readline().strip()
+        if entry == '':
+            break
+        prob_data.append(float(entry))
+    f.close()
+    return prob_data
 
 def average(session, plot_type):
     f = open(os.path.join(session, 'config.txt'), 'r')
@@ -55,7 +70,7 @@ def average(session, plot_type):
     return mean, std
 
 
-def plot(mean, std, type, show=True, filename=False):
+def plot_mean(mean, std, type, show=True, filename=False):
     title_font = {'fontname': 'Arial', 'size': '20',
                       'color': 'black', 'weight': 'normal'}
     axis_font = {'fontname': 'Arial', 'size': '18'}
@@ -78,11 +93,39 @@ def plot(mean, std, type, show=True, filename=False):
     if show:
         plt.show()
 
-mean, std = average('Session 1', 'score_plot')
-plot(mean, std, 'score', show=False)
 
-mean, std = average('Session 1', 'prob_plot')
-plot(mean, std, 'probability', show=False)
+def plot_prob(data, labels=False, ylabel='probability to jump', show=True, filename=False):
+    title_font = {'fontname': 'Arial', 'size': '20',
+                  'color': 'black', 'weight': 'normal'}
+    axis_font = {'fontname': 'Arial', 'size': '18'}
+    plt.figure()
+    plt.xlabel('steps', **axis_font)
+    plt.ylabel(ylabel, **axis_font)
 
-mean, std = average('Session 1', 'conv_plot')
-plot(mean, std, 'convergence', show=True)
+    for i in range(len(data)):
+        y_data = data[i]
+        x_data = [j for j in range(1, len(y_data) + 1)]
+        if labels:
+            plt.plot(x_data, y_data, label=labels[i])
+        else:
+            plt.plot(x_data, y_data)
+    if labels:
+        plt.legend()
+    if filename:
+        plt.savefig(filename)
+    if show:
+        plt.show()
+
+
+mean, std = average('test', 'score_plot')
+plot_mean(mean, std, 'score', show=False)
+
+mean, std = average('test', 'conv_plot')
+plot_mean(mean, std, 'convergence', show=False)
+
+data = []
+labels = []
+for i in range(0, 100, 10):
+    data.append(import_prob('test', 1, 0, i))
+    labels.append('episode ' + str(i))
+plot_prob(data, labels=labels, ylabel='probability to go right', show=True, filename=False)
