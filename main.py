@@ -20,7 +20,7 @@ def read_config(filename):
         if name in ['learning rate', 'gamma', 'entropy regularization factor']:
             parameters[name] = float(value)
         elif name in ['t_max', 'max episodes', 'number of threads',
-                     'number of realizations', 'max load episodes']:
+                     'number of realizations', 'max load episodes', 'probplot frequency']:
             parameters[name] = int(float(value))
         else:
             parameters[name] = value
@@ -70,6 +70,10 @@ def new_session(parameters, path):
         os.mkdir(rel_path)
         for folder in ['score_plot', 'conv_plot', 'prob_plot']:
             os.mkdir(os.path.join(rel_path, folder))
+
+        # Create worker folders in prob_plot
+        for i in range(parameters['number of threads']):
+            os.mkdir(os.path.join(rel_path, 'prob_plot', 'w%02i' % i))
 
         # Run A3C for every realization
         parameters['rel_path'] = rel_path

@@ -63,7 +63,10 @@ class Worker(mp.Process):
             self.global_actor_critic.state_dict())
 
         # Initialize Data Storage
-        self.data = Data_storage(parameters['rel_path'], parameters['environment name'])
+        self.data = Data_storage(parameters['rel_path'],
+                                 parameters['environment name'],
+                                 parameters['probplot frequency']
+                                 )
 
     def run(self):
         """The tasks of a single worker.
@@ -98,7 +101,8 @@ class Worker(mp.Process):
                 self.memory.add(observation, action, reward, value)
 
                 # Add probability data to the data storage object
-                self.data.add_prob(probs)
+                if i % self.data.prob_freq == 0:
+                    self.data.add_prob(probs)
 
                 if steps % self.t_max == 0 or done: # If episode is done or
                                                     # tmax is reached
@@ -136,17 +140,19 @@ class Worker(mp.Process):
                 # Save data in textfiles
                 self.data.save_score(self.name)
                 self.data.save_conv(self.name)
-                self.data.save_prob(self.name)
 
                 # Clear data storage
                 self.data.clear_data()
+
+            # Save prob_plot
+            if i % self.data.prob_freq == 0:
+                self.data.save_prob(self.name, i)
 
         ### At the end of the session: ###
 
         # Save data in textfiles
         self.data.save_score(self.name)
         self.data.save_conv(self.name)
-        self.data.save_prob(self.name)
 
         # Clear data storage
         self.data.clear_data()
@@ -246,7 +252,7 @@ class Memory():
 class Data_storage():
     """Store data not directly required for the algorithm to run."""
     """Non of the methods are required for the algorithm to function."""
-    def __init__(self, path, env_name):
+    def __init__(self, path, env_name, prob_freq):
 
         # path for data storage
         self.path = path
@@ -259,11 +265,13 @@ class Data_storage():
         self.conv_plot = []
         self.prob_plot = []
 
+        # Frequency of storage of probability plot
+        self.prob_freq = prob_freq
+
     def clear_data(self):
-        """Clear the data."""
+        """Clear the data. Does not clear prob_plot."""
         self.score_plot = []
         self.conv_plot = []
-        self.prob_plot = []
 
     def add_score(self, total_reward):
         """Add score data."""
@@ -299,14 +307,17 @@ class Data_storage():
             f.write(str(element.item()) + '\n')
         f.close()
 
-    def save_prob(self, name):
-        """Save the probability data in a textfile."""
-        folderpath = os.path.join(self.path, 'prob_plot')
-        filepath = os.path.join(folderpath, name + '.txt')
+    def save_prob(self, name, episode_nr):
+        """Save the probability data in a textfile and clear the prob_plot data."""
+        folderpath = os.path.join(self.path, 'prob_plot', name)
+        filepath = os.path.join(folderpath, 'episode ' + str(episode_nr) + '.txt')
         f = open(filepath, 'a+')
         for element in self.prob_plot:
             f.write(str(element.item()) + '\n')
         f.close()
+
+        # Clear the data
+        self.prob_plot = []
 
     def save_net(self, network):
         """Save the network in a textfile."""

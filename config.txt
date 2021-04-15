@@ -1,15 +1,16 @@
 #### Config for a new session ####
 
-environment name: FlappyBird-v0
-learning rate: 1e-4
+environment name: CartPole-v0
+learning rate: 5e-5
 gamma: 0.99
 t_max: 5
-max episodes: 10
+max episodes: 100
 entropy regularization factor: 0
-number of threads: 8
+number of threads: 4
 
-session name: Session 1
-number of realizations: 5
+session name: test
+number of realizations: 2
+probplot frequency: 10
 
 
 
@@ -17,7 +18,7 @@ number of realizations: 5
 # If a session is entered here, that session is loaded and the config of that session is used,
 # along with the specified amount of max episodes.
 
-load session: Session 1
-max load episodes: 5
+load session:
+max load episodes: 1000
 
 
