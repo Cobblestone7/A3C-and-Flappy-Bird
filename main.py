@@ -1,4 +1,4 @@
-import A3C_lamda
+import A3C_lambda
 import os
 import pickle
 
