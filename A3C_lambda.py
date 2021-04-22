@@ -108,6 +108,7 @@ class Worker(mp.Process):
 
                 if steps % self.t_max == 0 or done: # If episode is done or
                                                     # tmax is reached
+                    # Add next state to state list
                     self.memory.states.append(observation_)
                     # Train locally
                     self.train(done)
@@ -174,48 +175,47 @@ class Worker(mp.Process):
         # Calculate the action distributions and values
         probs, values = self.local_actor_critic.forward(states)
 
-        # Approximate the value function of the last state
+        # Approximate the value function of the last state and initial values for
+        # the return and lambda return
         R = values[-1] * (1 - int(done))
         Rlamda = R
-        lamda = 0.4
-        #j = 0
 
+        # Hyper parameter
+        lamda = 0.4
+
+        # If last state, the value function is zero
         if done:
             values[-1] = 0
-            #values = torch.cat((values, torch.tensor([[0]])))
-            #j = 1
 
+        # If only one state in batch which implies that it is terminal state,
+        # add an another zero to list of values for state after terminal state
         if values.size() == torch.Size([1, 1]) and done:
             values = torch.cat((torch.tensor([[values.view(1)]]), torch.tensor([[0]])))
 
-
+        # Construct return lists
         batch_return = []
         batch_return_lamda = []
-        '''
-        if len(self.memory.rewards) == 1:
-            R = self.memory.rewards[0] + self.gamma * R
-            Rlamda = self.memory.rewards[0] + self.gamma * (lamda * R)
-            batch_return.append(R)
-            batch_return_lamda.append(Rlamda)'''
 
 
-        for i in range(len(self.memory.rewards) - 1, -1, -1):
+        for i in range(len(self.memory.rewards) - 1, -1, -1): # For t-1 to 0
+            # Calculate returns
             R = self.memory.rewards[i] + self.gamma * R
             Rlamda = self.memory.rewards[i] + self.gamma * (lamda * R + (1 - lamda) * values[i+1])
+            # Append to return lists
             batch_return.append(R)
             batch_return_lamda.append(Rlamda)
 
         # Reverse the list of returns
         batch_return.reverse()
         batch_return_lamda.reverse()
-        # Convert the list of returns to a tensor
+
+        # Convert the lists of returns to a tensor
         batch_return = torch.tensor(batch_return, dtype=torch.float)
         returns = batch_return
-
         batch_return_lamda = torch.tensor(batch_return_lamda, dtype=torch.float)
         returns_lamda = batch_return_lamda
 
-        # Calculate the critic loss
+        # Calculate the critic loss with lambda returns
         values = values.squeeze()
         critic_loss = (returns_lamda-values[:-1])**2
 
@@ -229,10 +229,11 @@ class Worker(mp.Process):
 
         # Calculate the entropy
         #entropy = -torch.mul(probs, torch.log(probs)).mean()
+        #total_loss = (critic_loss + actor_loss).mean() - entropy * self.entropy_reg_factor
 
         # Calculate the total loss
-        #total_loss = (critic_loss + actor_loss).mean() - entropy * self.entropy_reg_factor
         total_loss = (critic_loss + actor_loss).mean()
+
         # Reset the gradient and propagate the loss
         self.optimizer.zero_grad()
         total_loss.backward()
