@@ -45,7 +45,7 @@ def load_session(path, max_episodes):
         network = pickle.load(f)
         f.close()
         parameters['rel_path'] = rel_path
-        A3C.main(parameters, network=network)
+        A3C_lambda.main(parameters, network=network)
 
 
 def new_session(parameters, path):
@@ -77,7 +77,7 @@ def new_session(parameters, path):
 
         # Run A3C for every realization
         parameters['rel_path'] = rel_path
-        A3C.main(parameters)
+        A3C_lambda.main(parameters)
 
 
 def main():
