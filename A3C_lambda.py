@@ -187,11 +187,6 @@ class Worker(mp.Process):
         if done:
             values[-1] = 0
 
-        # If only one state in batch which implies that it is terminal state,
-        # add an another zero to list of values for state after terminal state
-        if values.size() == torch.Size([1, 1]) and done:
-            values = torch.cat((torch.tensor([[values.view(1)]]), torch.tensor([[0]])))
-
         # Construct return lists
         batch_return = []
         batch_return_lamda = []
