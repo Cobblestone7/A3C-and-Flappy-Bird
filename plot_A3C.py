@@ -4,6 +4,8 @@ import os
 
 
 def _import(session, i, plot_type):
+    """Imports mean total reward data and mean
+    value function data from an old session."""
     worker_name = ('w%02i' % i) + '.txt'
     data = []
     for realization in os.listdir(session):
@@ -24,6 +26,7 @@ def _import(session, i, plot_type):
 
 
 def import_prob(session, realization_nr, worker_nr, episode_nr):
+    """Imports probability distribution data from an old session."""
     i = worker_nr
     path = os.path.join(session, 'realization_' + str(realization_nr), 'prob_plot', 'w%02i' % i)
     filename = os.path.join(path, 'episode ' + str(episode_nr) + '.txt')
@@ -39,6 +42,7 @@ def import_prob(session, realization_nr, worker_nr, episode_nr):
 
 
 def average(session, plot_type):
+    """Averages the data over all workers and realizations."""
     f = open(os.path.join(session, 'config.txt'), 'r')
     while True:
         line = f.readline().split(':')
@@ -72,6 +76,7 @@ def average(session, plot_type):
 
 
 def plot_mean(mean, std, ylabel='', title='', show=True, filename=False):
+    """Plots the mean total reward and mean value functions."""
     title_font = {'fontname': 'Arial', 'size': '20',
                       'color': 'black', 'weight': 'normal'}
     axis_font = {'fontname': 'Arial', 'size': '18'}
@@ -91,6 +96,7 @@ def plot_mean(mean, std, ylabel='', title='', show=True, filename=False):
 
 
 def plot_prob(data, labels=False, ylabel='probability to jump', title='', show=True, filename=False):
+    """Plots the probability distribution."""
     title_font = {'fontname': 'Arial', 'size': '20',
                   'color': 'black', 'weight': 'normal'}
     axis_font = {'fontname': 'Arial', 'size': '18'}
@@ -114,11 +120,11 @@ def plot_prob(data, labels=False, ylabel='probability to jump', title='', show=T
         plt.show()
 
 
-mean, std = average('test', 'score_plot')
+mean, std = average('A3C lambda', 'score_plot')
 plot_mean(mean, std, ylabel='total reward', title='Mean total reward', show=False)
 
-mean, std = average('test', 'conv_plot')
-plot_mean(mean, std, ylabel='value', title='Mean value function', show=False)
+mean, std = average('A3C lambda', 'conv_plot')
+plot_mean(mean, std, ylabel='value', title='Mean value function', show=True)
 
 data = []
 labels = []

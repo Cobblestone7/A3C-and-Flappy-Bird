@@ -9,6 +9,7 @@ import os
 import pickle
 import time
 
+
 def t(m_array):
     """Converts a multidimensional array to a torch tensor."""
     return torch.Tensor(m_array)
@@ -64,7 +65,7 @@ class Worker(mp.Process):
             self.global_actor_critic.state_dict())
 
         # Initialize Data Storage
-        self.data = Data_storage(parameters['rel_path'],
+        self.data = DataStorage(parameters['rel_path'],
                                  parameters['environment name'],
                                  parameters['probplot frequency']
                                  )
@@ -72,21 +73,14 @@ class Worker(mp.Process):
     def run(self):
         """The tasks of a single worker.
         The workers interact with the environment here."""
-        for i in range(self.max_episodes): # For every episode
+        for i in range(1, self.max_episodes + 1): # For every episode
             # Reset the parameters and the environment
             done = False
             total_reward = 0
             observation = self.env.reset()
             steps = 1
 
-            # Comment the five lines below to render the episodes
-            #render_ep = 10
-            #if i % render_ep == 0:
-            #    render = True
-            #else:
-            #    render = False
-
-            while not done: # Until episode is done
+            while not done:  # Until episode is done
                 # Sample an action based on state
                 state = torch.tensor([observation], dtype=torch.float)
                 probs, value = self.local_actor_critic.forward(state)
@@ -98,6 +92,8 @@ class Worker(mp.Process):
                 observation_, reward, done, info = self.env.step(action)
 
                 total_reward += reward
+                if total_reward > 95:
+                    print(self.name, total_reward, info['score'])
 
                 # Add data to memory
                 self.memory.add(observation, action, reward, value)
@@ -123,11 +119,6 @@ class Worker(mp.Process):
                 steps += 1
                 observation = observation_
 
-                # Comment the three lines below to render the episodes
-                #if render:
-                #    self.env.render()
-                #    time.sleep(1/30)
-
             # Increment the episode index
             with self.episode_idx.get_lock():
                 self.episode_idx.value += 1
@@ -139,8 +130,7 @@ class Worker(mp.Process):
             self.data.add_score(total_reward)
             self.data.add_conv(self.local_actor_critic)
 
-
-            if i % 1000000: # For every 1 000 000 episodes
+            if i % 10000 == 0: # For every 1 000 000 episodes
                 # Save data in textfiles
                 self.data.save_score(self.name)
                 self.data.save_conv(self.name)
@@ -152,7 +142,7 @@ class Worker(mp.Process):
             if i % self.data.prob_freq == 0:
                 self.data.save_prob(self.name, i)
 
-        ### At the end of the session: ###
+        # ----- At the end of the session -----
 
         # Save data in textfiles
         self.data.save_score(self.name)
@@ -181,7 +171,7 @@ class Worker(mp.Process):
         Rlamda = R
 
         # Hyper parameter
-        lamda = 0.4
+        lamda = 1
 
         # If last state, the value function is zero
         if done:
@@ -191,11 +181,10 @@ class Worker(mp.Process):
         batch_return = []
         batch_return_lamda = []
 
-
         for i in range(len(self.memory.rewards) - 1, -1, -1): # For t-1 to 0
             # Calculate returns
             R = self.memory.rewards[i] + self.gamma * R
-            Rlamda = self.memory.rewards[i] + self.gamma * (lamda * R + (1 - lamda) * values[i+1])
+            Rlamda = self.memory.rewards[i] + self.gamma * (lamda * Rlamda + (1 - lamda) * values[i+1])
             # Append to return lists
             batch_return.append(R)
             batch_return_lamda.append(Rlamda)
@@ -223,11 +212,11 @@ class Worker(mp.Process):
         actor_loss = -log_probs*(returns-values[:-1])
 
         # Calculate the entropy
-        #entropy = -torch.mul(probs, torch.log(probs)).mean()
-        #total_loss = (critic_loss + actor_loss).mean() - entropy * self.entropy_reg_factor
+        entropy = -torch.mul(probs, torch.log(probs)).mean()
+
 
         # Calculate the total loss
-        total_loss = (critic_loss + actor_loss).mean()
+        total_loss = (critic_loss + actor_loss).mean() - entropy * self.entropy_reg_factor
 
         # Reset the gradient and propagate the loss
         self.optimizer.zero_grad()
@@ -272,7 +261,7 @@ class Memory():
         self.values = []
 
 
-class Data_storage():
+class DataStorage():
     """Store data not directly required for the algorithm to run."""
     """Non of the methods are required for the algorithm to function."""
     def __init__(self, path, env_name, prob_freq):
