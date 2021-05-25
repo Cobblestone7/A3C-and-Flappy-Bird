@@ -1,12 +1,22 @@
-learning rate: 1e-4
-gamma: 0.99
-t_max: 10
-max episodes: 1000
-load session: storage.txt
-store session: storage.txt
+#### Config for a new session ####
+
 environment name: FlappyBird-v0
-directory for plots: plot_fold
-directory for conv_plots: conv_plot_fold
-directory for prob_plots: prob_plot_fold
-number of threads: 8
+learning rate: 2e-4
+gamma: 0.99
+t_max: 30
+max episodes: 6000
 entropy regularization factor: 0
+number of threads: 8
+
+session name: score reward
+number of realizations: 1
+probplot frequency: 100
+
+
+
+#### Config for loading an old session ####
+# If a session is entered here, that session is loaded and the config of that session is used,
+# along with the specified amount of max episodes.
+
+load session: score reward
+max load episodes: 500
